@@ -19,19 +19,45 @@ time_table_drop = "DROP TABLE IF EXISTS times"
 
 staging_events_table_create= ("""
 CREATE TABLE staging_events (
-
-)
+    artist VARCHAR(128) NOT NULL,
+    auth VARCHAR(128)
+    firstName VARCHAR(128),
+    lastName VARCHAR(128),
+    gender VARCHAR(1)
+    itemInSession INTEGER,
+    length FLOAT,
+    level VARCHAR(4)
+    location VARCHAR(128),
+    method VARCHAR(32),
+    page VARCHAR(32),
+    registration FLOAT,
+    sessionId INTEGER,
+    song VARCHAR(128),
+    status INTEGER,
+    ts BIGINT,
+    userAgent VARCHAR(256),
+    userId INT NOT NULL,
+);
 """)
 
 staging_songs_table_create = ("""
 CREATE TABLE staging_songs (
-
-)
+    song_id VARCHAR(18),
+    num_songs INT,
+    title VARCHAR(128),
+    year INT,
+    duration DOUBLE PRECISION,
+    artist_id VARCHAR(18),
+    artist_name VARCHAR(128),
+    artist_latitude DOUBLE PRECISION,
+    artist_longitide DOUBLE PRECISION,
+    artist_location VARCHAR(128),
+);
 """)
 
 songplay_table_create = ("""
 CREATE TABLE IF NOT EXISTS songplays (
-    songplay_id SERIAL PRIMARY KEY,
+    songplay_id IDENTITY(0,1) PRIMARY KEY,
     start_time TIMESTAMP NOT NULL,
     user_id INT NOT NULL,
     level VARCHAR(4),
@@ -92,10 +118,20 @@ CREATE TABLE IF NOT EXISTS times (
 # STAGING TABLES
 
 staging_events_copy = ("""
-""").format()
+COPY staging_events 
+FROM {}
+iam_role {}
+region 'us-west-2'
+FORMAT AS json {}
+""").format(config['LOG_DATA'], config['ARN'], config['LOG_JSONPATH'])
 
 staging_songs_copy = ("""
-""").format()
+COPY staging_songs 
+FROM {}
+iam_role {}
+region 'us-west-2'
+FORMAT AS json 'auto'
+""").format(config.SONG_DATA, config.ARN)
 
 # FINAL TABLES
 
