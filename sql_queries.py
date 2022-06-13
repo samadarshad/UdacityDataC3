@@ -136,7 +136,7 @@ FORMAT AS json 'auto'
 # FINAL TABLES
 songplay_table_insert = ("""
 INSERT INTO songplays (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
-SELECT
+SELECT DISTINCT
     TIMESTAMP 'epoch' + staging_events.ts/1000 * INTERVAL '1 second',
     staging_events.userId,
     staging_events.level,
