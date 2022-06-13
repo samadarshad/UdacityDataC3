@@ -54,7 +54,7 @@ CREATE TABLE staging_songs (
     year            INTEGER,
     duration        DOUBLE PRECISION,
     artist_id       VARCHAR,
-    artist_longitide DOUBLE PRECISION,
+    artist_longitude DOUBLE PRECISION,
     artist_location VARCHAR
 );
 """)
@@ -64,44 +64,40 @@ CREATE TABLE songplays (
     songplay_id INT IDENTITY(0,1) PRIMARY KEY,
     start_time TIMESTAMP NOT NULL SORTKEY,
     user_id INT NOT NULL DISTKEY,
-    level VARCHAR(4),
-    song_id VARCHAR(18),
-    artist_id VARCHAR(18),
+    level VARCHAR,
+    song_id VARCHAR,
+    artist_id VARCHAR,
     session_id INT,
-    location VARCHAR(128),
-    user_agent VARCHAR(256),
-    FOREIGN KEY (user_id) REFERENCES users (user_id),
-    FOREIGN KEY (song_id) REFERENCES songs (song_id),
-    FOREIGN KEY (artist_id) REFERENCES artists (artist_id)
+    location VARCHAR,
+    user_agent VARCHAR
     );
 """)
 
 user_table_create = ("""
 CREATE TABLE users (
     user_id INT PRIMARY KEY SORTKEY,
-    first_name VARCHAR(128),
-    last_name VARCHAR(128),
-    level VARCHAR(4),
-    gender VARCHAR(1)
+    first_name VARCHAR,
+    last_name VARCHAR,
+    gender VARCHAR(1),
+    level VARCHAR
     );
 """)
 
 song_table_create = ("""
 CREATE TABLE songs (
-    song_id VARCHAR(18) PRIMARY KEY SORTKEY,
-    title VARCHAR(128) NOT NULL,
-    artist_id VARCHAR(18),
+    song_id VARCHAR PRIMARY KEY SORTKEY,
+    title VARCHAR NOT NULL,
+    artist_id VARCHAR,
     year INT,
-    duration DOUBLE PRECISION NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artists (artist_id)
+    duration DOUBLE PRECISION NOT NULL
     );
 """)
 
 artist_table_create = ("""
 CREATE TABLE artists (
-    artist_id VARCHAR(18) PRIMARY KEY SORTKEY,
-    name VARCHAR(128) NOT NULL,
-    location VARCHAR(128),
+    artist_id VARCHAR PRIMARY KEY SORTKEY,
+    name VARCHAR NOT NULL,
+    location VARCHAR,
     latitude DOUBLE PRECISION,
     longitude DOUBLE PRECISION
     );
@@ -109,7 +105,7 @@ CREATE TABLE artists (
 
 time_table_create = ("""
 CREATE TABLE times (
-    start_time TIME UNIQUE SORTKEY,
+    start_time TIME SORTKEY,
     hour INT,
     day INT,
     week INT,
@@ -140,7 +136,7 @@ FORMAT AS json 'auto'
 # FINAL TABLES
 songplay_table_insert = ("""
 INSERT INTO songplays (start_time, user_id, level, song_id, artist_id, session_id, location, user_agent)
-SELECT songplay_id IDENTITY(0,1) PRIMARY KEY,
+SELECT
     TIMESTAMP 'epoch' + staging_events.ts/1000 * INTERVAL '1 second',
     staging_events.userId,
     staging_events.level,
@@ -148,7 +144,7 @@ SELECT songplay_id IDENTITY(0,1) PRIMARY KEY,
     staging_songs.artist_id,
     staging_events.sessionId,
     staging_events.location,
-    staging_events.userAgent,
+    staging_events.userAgent
 FROM staging_events
 INNER JOIN staging_songs 
 ON staging_events.song = staging_songs.title 
@@ -158,38 +154,35 @@ WHERE staging_events.page = 'NextSong'
 
 user_table_insert = ("""
 INSERT INTO users
-SELECT userId, firstName, lastName, gender, level
+SELECT DISTINCT (userId), firstName, lastName, gender, level
 FROM staging_events
 WHERE page = 'NextSong'
 AND userId IS NOT NULL
-ON CONFLICT (user_id) DO UPDATE SET level = EXCLUDED.level
 """)
 
 song_table_insert = ("""
 INSERT INTO songs
-SELECT song_id, title, artist_id, year, duration
+SELECT DISTINCT (song_id), title, artist_id, year, duration
 FROM staging_songs
-ON CONFLICT (song_id) DO NOTHING
 """)
 
 artist_table_insert = ("""
 INSERT INTO artists
-SELECT artist_id, artist_name, artist_location, artist_latitude, artist_longitude
+SELECT DISTINCT (artist_id), artist_name, artist_location, artist_latitude, artist_longitude
 FROM staging_songs
-ON CONFLICT (artist_id) DO NOTHING
 """)
 
 time_table_insert = ("""
 INSERT INTO times
 SELECT 
-    TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
+    DISTINCT TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
     DATE_PART("hour", start_time) AS hour,
     DATE_PART("day", start_time) AS day,
     DATE_PART("week", start_time) AS week,
     DATE_PART("month", start_time) AS month,
+    DATE_PART("year", start_time) AS year,
     DATE_PART("dow", start_time) AS weekday
 FROM staging_events
-ON CONFLICT (start_time) DO NOTHING
 """)
 
 # QUERY LISTS
