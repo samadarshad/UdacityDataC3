@@ -6,6 +6,7 @@ config.read('dwh.cfg')
 LOG_DATA = config.get('S3', 'LOG_DATA')
 LOG_JSONPATH = config.get('S3', 'LOG_JSONPATH')
 SONG_DATA = config.get('S3', 'SONG_DATA')
+REGION = config.get('S3', 'REGION')
 ARN = config.get('IAM_ROLE', 'ARN')
 
 # DROP TABLES
@@ -19,48 +20,48 @@ artist_table_drop = "DROP TABLE IF EXISTS artists"
 time_table_drop = "DROP TABLE IF EXISTS times"
 
 # CREATE TABLES
-
+# Note: the ordering of the columns must match the data from s3
 staging_events_table_create = ("""
 CREATE TABLE staging_events (
-    artist VARCHAR(128) NOT NULL,
-    auth VARCHAR(128)
-    firstName VARCHAR(128),
-    lastName VARCHAR(128),
-    gender VARCHAR(1)
-    itemInSession INTEGER,
-    length FLOAT,
-    level VARCHAR(4)
-    location VARCHAR(128),
-    method VARCHAR(32),
-    page VARCHAR(32),
-    registration FLOAT,
-    sessionId INTEGER,
-    song VARCHAR(128),
-    status INTEGER,
-    ts BIGINT,
-    userAgent VARCHAR(256),
-    userId INT NOT NULL,
+    artist          VARCHAR,
+    auth            VARCHAR,
+    firstName       VARCHAR,
+    gender          VARCHAR,
+    itemInSession   INTEGER,
+    lastName        VARCHAR,
+    length          FLOAT,
+    level           VARCHAR,
+    location        VARCHAR,
+    method          VARCHAR,
+    page            VARCHAR,
+    registration    BIGINT,
+    sessionId       INTEGER,
+    song            VARCHAR,
+    status          INTEGER,
+    ts              BIGINT,
+    userAgent       VARCHAR,
+    userId          INTEGER
 );
 """)
 
 staging_songs_table_create = ("""
 CREATE TABLE staging_songs (
-    song_id VARCHAR(18),
-    num_songs INT,
-    title VARCHAR(128),
-    year INT,
-    duration DOUBLE PRECISION,
-    artist_id VARCHAR(18),
-    artist_name VARCHAR(128),
+    song_id         VARCHAR,
+    num_songs       INTEGER,
+    title           VARCHAR,
+    artist_name     VARCHAR,
     artist_latitude DOUBLE PRECISION,
+    year            INTEGER,
+    duration        DOUBLE PRECISION,
+    artist_id       VARCHAR,
     artist_longitide DOUBLE PRECISION,
-    artist_location VARCHAR(128),
+    artist_location VARCHAR
 );
 """)
 
 songplay_table_create = ("""
-CREATE TABLE IF NOT EXISTS songplays (
-    songplay_id IDENTITY(0,1) PRIMARY KEY,
+CREATE TABLE songplays (
+    songplay_id INT IDENTITY(0,1) PRIMARY KEY,
     start_time TIMESTAMP NOT NULL SORTKEY,
     user_id INT NOT NULL DISTKEY,
     level VARCHAR(4),
@@ -76,7 +77,7 @@ CREATE TABLE IF NOT EXISTS songplays (
 """)
 
 user_table_create = ("""
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     user_id INT PRIMARY KEY SORTKEY,
     first_name VARCHAR(128),
     last_name VARCHAR(128),
@@ -86,7 +87,7 @@ CREATE TABLE IF NOT EXISTS users (
 """)
 
 song_table_create = ("""
-CREATE TABLE IF NOT EXISTS songs (
+CREATE TABLE songs (
     song_id VARCHAR(18) PRIMARY KEY SORTKEY,
     title VARCHAR(128) NOT NULL,
     artist_id VARCHAR(18),
@@ -97,7 +98,7 @@ CREATE TABLE IF NOT EXISTS songs (
 """)
 
 artist_table_create = ("""
-CREATE TABLE IF NOT EXISTS artists (
+CREATE TABLE artists (
     artist_id VARCHAR(18) PRIMARY KEY SORTKEY,
     name VARCHAR(128) NOT NULL,
     location VARCHAR(128),
@@ -107,14 +108,14 @@ CREATE TABLE IF NOT EXISTS artists (
 """)
 
 time_table_create = ("""
-CREATE TABLE IF NOT EXISTS times (
+CREATE TABLE times (
     start_time TIME UNIQUE SORTKEY,
-    hour INT CHECK (hour >= 0 AND hour <= 23),
-    day INT CHECK (day >= 1 AND day <= 31),
-    week INT CHECK (week >= 1 AND week <= 52),
-    month INT CHECK (month >= 1 AND month <= 12),
+    hour INT,
+    day INT,
+    week INT,
+    month INT,
     year INT,
-    weekday INT CHECK (weekday >= 0 AND weekday <= 6)
+    weekday INT
     );
 """)
 
@@ -124,17 +125,17 @@ staging_events_copy = ("""
 COPY staging_events 
 FROM {}
 iam_role {}
-region 'us-west-2'
+region {}
 FORMAT AS json {}
-""").format(LOG_DATA, ARN, LOG_JSONPATH)
+""").format(LOG_DATA, ARN, REGION, LOG_JSONPATH)
 
 staging_songs_copy = ("""
 COPY staging_songs 
 FROM {}
 iam_role {}
-region 'us-west-2'
+region {}
 FORMAT AS json 'auto'
-""").format(SONG_DATA, ARN)
+""").format(SONG_DATA, ARN, REGION)
 
 # FINAL TABLES
 songplay_table_insert = ("""
@@ -160,6 +161,7 @@ INSERT INTO users
 SELECT userId, firstName, lastName, gender, level
 FROM staging_events
 WHERE page = 'NextSong'
+AND userId IS NOT NULL
 ON CONFLICT (user_id) DO UPDATE SET level = EXCLUDED.level
 """)
 
@@ -192,8 +194,8 @@ ON CONFLICT (start_time) DO NOTHING
 
 # QUERY LISTS
 
-create_table_queries = [staging_events_table_create, staging_songs_table_create, songplay_table_create,
-                        user_table_create, song_table_create, artist_table_create, time_table_create]
+create_table_queries = [staging_events_table_create, staging_songs_table_create,
+                        user_table_create, artist_table_create, song_table_create, songplay_table_create, time_table_create]
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop, songplay_table_drop, user_table_drop,
                       song_table_drop, artist_table_drop, time_table_drop]
 copy_table_queries = [staging_events_copy, staging_songs_copy]

@@ -13,12 +13,14 @@ DB_PORT = config.get('CLUSTER', 'DB_PORT')
 
 def load_staging_tables(cur, conn):
     for query in copy_table_queries:
+        print(query)
         cur.execute(query)
         conn.commit()
 
 
 def insert_tables(cur, conn):
     for query in insert_table_queries:
+        print(query)
         cur.execute(query)
         conn.commit()
 
