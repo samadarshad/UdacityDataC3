@@ -3,6 +3,10 @@ import configparser
 # CONFIG
 config = configparser.ConfigParser()
 config.read('dwh.cfg')
+LOG_DATA = config.get('S3', 'LOG_DATA')
+LOG_JSONPATH = config.get('S3', 'LOG_JSONPATH')
+SONG_DATA = config.get('S3', 'SONG_DATA')
+ARN = config.get('IAM_ROLE', 'ARN')
 
 # DROP TABLES
 
@@ -122,7 +126,7 @@ FROM {}
 iam_role {}
 region 'us-west-2'
 FORMAT AS json {}
-""").format(config['LOG_DATA'], config['ARN'], config['LOG_JSONPATH'])
+""").format(LOG_DATA, ARN, LOG_JSONPATH)
 
 staging_songs_copy = ("""
 COPY staging_songs 
@@ -130,7 +134,7 @@ FROM {}
 iam_role {}
 region 'us-west-2'
 FORMAT AS json 'auto'
-""").format(config.SONG_DATA, config.ARN)
+""").format(SONG_DATA, ARN)
 
 # FINAL TABLES
 songplay_table_insert = ("""
