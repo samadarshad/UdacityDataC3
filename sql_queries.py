@@ -34,7 +34,7 @@ CREATE TABLE staging_events (
     location        VARCHAR,
     method          VARCHAR,
     page            VARCHAR,
-    registration    BIGINT,
+    registration    VARCHAR,
     sessionId       INTEGER,
     song            VARCHAR,
     status          INTEGER,
@@ -154,7 +154,8 @@ WHERE staging_events.page = 'NextSong'
 
 user_table_insert = ("""
 INSERT INTO users
-SELECT DISTINCT (userId), firstName, lastName, gender, level
+SELECT DISTINCT 
+    userId, firstName, lastName, gender, level
 FROM staging_events
 WHERE page = 'NextSong'
 AND userId IS NOT NULL
@@ -162,20 +163,22 @@ AND userId IS NOT NULL
 
 song_table_insert = ("""
 INSERT INTO songs
-SELECT DISTINCT (song_id), title, artist_id, year, duration
+SELECT DISTINCT 
+    song_id, title, artist_id, year, duration
 FROM staging_songs
 """)
 
 artist_table_insert = ("""
 INSERT INTO artists
-SELECT DISTINCT (artist_id), artist_name, artist_location, artist_latitude, artist_longitude
+SELECT DISTINCT 
+    artist_id, artist_name, artist_location, artist_latitude, artist_longitude
 FROM staging_songs
 """)
 
 time_table_insert = ("""
 INSERT INTO times
-SELECT 
-    DISTINCT TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
+SELECT DISTINCT 
+    TIMESTAMP 'epoch' + ts/1000 * INTERVAL '1 second' AS start_time,
     DATE_PART("hour", start_time) AS hour,
     DATE_PART("day", start_time) AS day,
     DATE_PART("week", start_time) AS week,
